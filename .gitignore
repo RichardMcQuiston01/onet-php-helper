@@ -1,0 +1,13 @@
+.idea
+.vscode
+
+*.log
+*.exe
+*.bat
+
+*.zip
+*.rar
+*.7z
+*.iso
+
+env.json
