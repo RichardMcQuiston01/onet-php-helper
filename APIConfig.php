@@ -1,5 +1,9 @@
 <?php
 
+namespace com\mcqsoft\OnetAPIHelper\Config;
+
+use stdClass;
+
 class APIConfig
 {
   private string $fileName;
