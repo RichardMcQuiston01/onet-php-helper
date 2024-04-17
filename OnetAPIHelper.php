@@ -2,20 +2,21 @@
 
 namespace com\mcqsoft\OnetAPIHelper;
 
+use com\mcqsoft\OnetAPIHelper\Config\APIConfig;
+use com\mcqsoft\OnetAPIHelper\DTO\InterestProfilerCareers;
+use com\mcqsoft\OnetAPIHelper\DTO\InterestProfilerParams;
 use com\mcqsoft\OnetAPIHelper\DTO\InterestProfilerResultsParams;
 use stdClass;
-use com\mcqsoft\OnetAPIHelper\Config\APIConfig;
-use com\mcqsoft\OnetAPIHelper\DTO\InterestProfilerParams;
 
 require_once( 'APIConfig.php' );
+require_once( 'GetResponse.php' );
 
 class OnetAPIHelper
 {
   //#region Variables
-  private string $userName;
-  private string $userPassword;
-  private string $token;
-  private string $baseUrl;
+  private string $userName = '';
+  private string $userPassword = '';
+  private string $baseUrl = '';
   //#endregion
 
   //#region Magic Functions
@@ -39,60 +40,66 @@ class OnetAPIHelper
           $this->baseUrl = $jsonData->BASE_URL;
         }
       }
+    } else {
+      die( 'No env.json Provided' );
     }
 
     return $this;
-  }
-  //#endregion
-
-  //#region Getters and Setters
-  public function setToken(): OnetAPIHelper
-  {
-    if ( $this->userName !== '' && $this->userPassword !== '' ) {
-      $this->token = base64_encode( $this->userName . ':' . $this->userPassword );
-    }
-
-    return $this;
-  }
-
-  public function getToken(): string
-  {
-    return $this->token;
   }
   //#endregion
 
   //#region Core Functions
-  /**
-   * @param  string  $url
-   * @param  object  $params
-   *
-   * @return bool|string
-   */
-  public function getRequest( string $url, object $params )
+  public function getRequest( string $url, object $params ): GetResponse
   {
+    $emptyParams = new stdClass();
+    $response = new GetResponse( $emptyParams );
     $paramsString = '';
 
-    if ( count( get_object_vars( $params ) ) > 0 ) {
-      $paramsString = '?' . http_build_query( $params );
+    if ( $this->baseUrl === '' ) {
+      $response->errors[] = 'No Base URL Specified';
     }
 
-    $fullUrl = $this->baseUrl . $url . $paramsString;
+    if ( $url === '' ) {
+      $response->errors[] = 'No URL Provided';
+    }
 
-    $headers = [
-      'Authorization: Basic ' . $this->getToken(),
-      'Content-Type: application/json',
-    ];
+    if ( $this->userName === '' && $this->userPassword === '' ) {
+      $response->errors[] = 'No Credentials';
+    }
 
-    $ch = curl_init();
-    curl_setopt( $ch, CURLOPT_URL, $fullUrl );
-    curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
-    curl_setopt( $ch, CURLOPT_HTTPHEADER, $headers );
+    if ( sizeof( $response->errors ) === 0 ) {
+      if ( count( get_object_vars( $params ) ) > 0 ) {
+        $paramsString = '?' . http_build_query( $params );
+      }
 
-    $result = curl_exec( $ch );
+      $response->url = $this->baseUrl . $url . $paramsString;;
 
-    curl_close( $ch );
+      $ch = curl_init();
 
-    return $result;
+      curl_setopt( $ch, CURLOPT_USERPWD, $this->userName . ":" . $this->userPassword );
+      curl_setopt( $ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC );
+      curl_setopt( $ch, CURLOPT_HTTPHEADER, [ "Accept: application/json" ] );
+      curl_setopt( $ch, CURLOPT_HEADER, false );
+      curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+      curl_setopt( $ch, CURLOPT_URL, $response->url );
+
+      $result = curl_exec( $ch );
+
+      if ( $result !== false ) {
+        $response->success = true;
+        $response->result = $result;
+
+        if ( strlen( $response->result ) > 1 ) {
+          $response->data = json_decode( $response->result );
+        }
+      } else {
+        $response->errors[] = curl_error( $ch );
+      }
+
+      curl_close( $ch );
+    }
+
+    return $response;
   }
   //#endregion
 
@@ -100,41 +107,48 @@ class OnetAPIHelper
   /**
    * @param  InterestProfilerParams  $params
    *
-   * @return void
+   * @return GetResponse
    */
-  public function getInterestProfilerQuestionsShort( InterestProfilerParams $params )
+  public function getInterestProfilerQuestionsShort( InterestProfilerParams $params ): GetResponse
   {
-    $url = 'mnm/interestprofiler/questions_30';
+    return $this->getRequest( 'mnm/interestprofiler/questions_30', $params );
   }
 
   /**
    * @param  InterestProfilerParams  $params
    *
-   * @return void
+   * @return GetResponse
    */
-  public function getInterestProfilerQuestionsLong( InterestProfilerParams $params )
+  public function getInterestProfilerQuestionsLong( InterestProfilerParams $params ): GetResponse
   {
-    $url = 'mnm/interestprofiler/questions';
+    return $this->getRequest( 'mnm/interestprofiler/questions', $params );
   }
 
   /**
    * @param  InterestProfilerResultsParams  $params
    *
-   * @return void
+   * @return GetResponse
    */
-  public function getResults( InterestProfilerResultsParams $params )
+  public function getResults( InterestProfilerResultsParams $params ): GetResponse
   {
-
+    return $this->getRequest( 'mnm/interestprofiler/results', $params );
   }
 
-  public function getJobZones()
+  public function getJobZones(): GetResponse
   {
+    $params = new stdClass();
 
+    return $this->getRequest( 'mnm/interestprofiler/job_zones', $params );
   }
 
-  public function getMatchingCareers()
+  /**
+   * @param  InterestProfilerCareers  $params
+   *
+   * @return GetResponse
+   */
+  public function getMatchingCareers( InterestProfilerCareers $params ): GetResponse
   {
-
+    return $this->getRequest( 'mnm/interestprofiler/careers', $params );
   }
   //#endregion
 }

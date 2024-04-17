@@ -11,3 +11,4 @@
 *.iso
 
 env.json
+phpinfo.php

@@ -8,6 +8,8 @@ $params = new stdClass();
 $params->filename = 'env.json';
 
 $apiHelper = new OnetAPIHelper( $params );
+
+$jobZones = $apiHelper->getJobZones();
 ?>
 <!doctype html>
 <html lang="en">
@@ -24,6 +26,17 @@ $apiHelper = new OnetAPIHelper( $params );
     <div class="row">
         <div class="col-md-12">
             <h1 class="text-center">O*NET API Helper</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <pre>
+              <?php
+              if ( isset( $jobZones->data ) ) {
+                print_r( $jobZones->data );
+              }
+              ?>
+            </pre>
         </div>
     </div>
 </main>
